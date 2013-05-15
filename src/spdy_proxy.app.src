@@ -1,0 +1,16 @@
+{application, spdy_proxy,
+ [
+  {description, "Simple, Scalable SPDY -> HTTP proxy"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  sasl,
+                  os_mon,
+                  inets,
+                  espdy
+                 ]},
+  {mod, { spdy_proxy_app, []}},
+  {env, []}
+ ]}.

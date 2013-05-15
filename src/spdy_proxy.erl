@@ -47,10 +47,12 @@ main(Args) ->
   Action(Options).
 
 start(Options) ->
-  application:set_env(spdy_proxy, options, Options),
   application:start(sasl),
   application:start(os_mon),
   application:start(inets),
+  application:start(espdy),
+
+  application:set_env(spdy_proxy, options, Options),
   application:start(spdy_proxy, permanent),
   receive impossible_message -> ok end.
 

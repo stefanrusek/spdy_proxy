@@ -42,11 +42,18 @@ init(_Id, Headers, SpdyOpts) ->
   HttpVersion = version(SpdyVersion, Headers), 
   ProxyPort = proplists:get_value(port, SpdyOpts),
   ProxyServer = proplists:get_value(server, SpdyOpts),
-  {ok, Sock} = gen_tcp:connect(ProxyServer, ProxyPort, [{mode, list}, {active, once}, {packet, line}]),
-
-  NewHeaders = [{<<"host">>, Host} | proplists:delete(<<"host">>, Headers)],
-  ok = gen_tcp:send(Sock, io_lib:format("~s ~s ~s~n~s~n", [Method, Path, HttpVersion, format_http_headers(NewHeaders)])),
-  {ok, noreply, [{spdy_version, SpdyVersion}, {sock, Sock}, {response_headers, []}]}.
+  case gen_tcp:connect(ProxyServer, ProxyPort, [{mode, list}, {active, once}, {packet, line}]) of
+    {ok, Sock} ->
+      NewHeaders = [{<<"host">>, Host} | proplists:delete(<<"host">>, Headers)],
+      FirstPacket = io_lib:format("~s ~s ~s~n~s~n", [Method, Path, HttpVersion, format_http_headers(NewHeaders)]),
+      case gen_tcp:send(Sock, FirstPacket) of
+        ok -> {ok, noreply, [{spdy_version, SpdyVersion}, {sock, Sock}, {response_headers, []}]};
+        _ -> 
+          gen_tcp:close(Sock),
+          {error, ?INTERNAL_ERROR}
+      end;
+    _ -> {error, ?REFUSED_STREAM}
+  end.
 
 %% Called when the SPDY session terminates
 closed(Reason, State) ->

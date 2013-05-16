@@ -1,3 +1,4 @@
+/spdy_proxy
 /ebin/*
 /deps/*
 *.dump

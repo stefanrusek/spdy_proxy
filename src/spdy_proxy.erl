@@ -7,25 +7,28 @@
 parse_args([], Options) -> lists:reverse(Options);
 
 parse_args(["-h" | Args], Options) -> parse_args(["--help" | Args], Options);
-parse_args(["--help" | _], Options) -> [{action, fun help/1} | Options];
+parse_args(["--help" | Args], Options) -> parse_args(Args, [{action, fun help/1} | Options]);
 
 parse_args(["-l" | Args], Options) -> parse_args(["--listen" | Args], Options);
-parse_args(["--listen", Port | _], Options) -> [{listen, list_to_integer(Port)} | Options];
+parse_args(["--listen", Port | Args], Options) -> parse_args(Args, [{listen, list_to_integer(Port)} | Options]);
 
 parse_args(["-c" | Args], Options) -> parse_args(["--listeners" | Args], Options);
 parse_args(["--count" | Args], Options) -> parse_args(["--listeners" | Args], Options);
-parse_args(["--listeners", Count | _], Options) -> [{listeners, list_to_integer(Count)} | Options];
+parse_args(["--listeners", Count | Args], Options) -> parse_args(Args, [{listeners, list_to_integer(Count)} | Options]);
 
 parse_args(["-p" | Args], Options) -> parse_args(["--port" | Args], Options);
-parse_args(["--port", Port | _], Options) -> [{port, list_to_integer(Port)} | Options];
+parse_args(["--port", Port | Args], Options) -> parse_args(Args, [{port, list_to_integer(Port)} | Options]);
 
 parse_args(["-s" | Args], Options) -> parse_args(["--server" | Args], Options);
-parse_args(["--server", Host | _], Options) -> [{server, Host} | Options];
+parse_args(["--server", Host | Args], Options) -> parse_args(Args, [{server, Host} | Options]);
 
 parse_args(["-x" | Args], Options) -> parse_args(["--spdyversion" | Args], Options);
-parse_args(["--spdyversion", "3" | _], Options) -> [{spdy_version, 3} | Options];
-parse_args(["--spdyversion", "2" | _], Options) -> [{spdy_version, 2} | Options];
-parse_args(["--spdyversion", "negotiate" | _], Options) -> [{spdy_version, negotiate} | Options];
+parse_args(["--spdyversion", "3" | Args], Options) -> parse_args(Args, [{spdy_version, 3} | Options]);
+parse_args(["--spdyversion", "2" | Args], Options) -> parse_args(Args, [{spdy_version, 2} | Options]);
+parse_args(["--spdyversion", "negotiate" | Args], Options) -> parse_args(Args, [{spdy_version, negotiate} | Options]);
+
+parse_args(["-v" | Args], Options) -> parse_args(["--verbose" | Args], Options);
+parse_args(["--verbose" | Args], Options) -> restart_logging(), parse_args(Args, Options);
 
 parse_args([Unrecognized | Args], Options) ->
   parse_args(Args, [{error, "Unrecognized: " ++ Unrecognized} | Options]).
@@ -37,8 +40,57 @@ merge([{Key, Value} | In], Out) ->
     _ -> merge(In, Out)
   end.
 
+dev_null(Parent) ->
+  receive
+    {io_request, From, ReplyAs, _Request} -> From ! {io_reply, ReplyAs, ok};
+    {notify, _} -> ok;
+    M -> 
+      case Parent of
+        null ->
+          io:format("UNEXPECTED: ~p~n", [M]);
+        Pid ->
+          Pid ! M
+      end
+  end,
+  dev_null(Parent).
+
+stop_logging() ->
+  Spdy = spawn(fun() -> dev_null(null) end),
+  register(spdy_logging, Spdy),
+
+  ErrorLogger = whereis(error_logger),
+  NullLogger = spawn(fun() -> dev_null(ErrorLogger) end),
+  unregister(error_logger),
+  register(error_logger, NullLogger),
+  register(error_logger_bak, ErrorLogger), 
+  ok.
+
+restart_logging() ->
+  case whereis(spdy_logging) of
+    Pid when is_pid(Pid) ->
+      io:format("Entering Verbose mode"),
+      unregister(spdy_logging),
+      unregister(error_logger),
+      ErrorLogger = whereis(error_logger_bak),
+      unregister(error_logger_bak),
+      register(error_logger, ErrorLogger)
+  end.
+
 main(Args) ->
+  io:format("spdy_proxy - simple, scalable SPDY -> HTTP proxy\n"),
+
+  stop_logging(),
   PassedOptions = parse_args(Args, []),
+
+  ok = application:set_env(sasl, sasl_error_logger, false),
+  ok = application:set_env(sasl, errlog_type, error),
+  ok = error_logger:tty(false),
+
+  application:start(sasl),
+  application:start(os_mon),
+  application:start(inets),
+  application:start(espdy),
+
   Options = merge(?DEFAULTS, PassedOptions),
   Action = case proplists:get_value(error, Options) of
     undefined -> proplists:get_value(action, Options);
@@ -47,11 +99,6 @@ main(Args) ->
   Action(Options).
 
 start(Options) ->
-  application:start(sasl),
-  application:start(os_mon),
-  application:start(inets),
-  application:start(espdy),
-
   application:set_env(spdy_proxy, options, Options),
   application:start(spdy_proxy, permanent),
   receive impossible_message -> ok end.
@@ -64,7 +111,8 @@ help(Options) ->
       "  -c, --count       Number of listener threads (default cpu_cores*2)",
       "  -p, --port        Connects on this port (default 80)",
       "  -s, --server      Connects to this server (default localhost)",
-      "  -x, --spdyversion SPDY version (default negotiate)"
+      "  -x, --spdyversion SPDY version (default negotiate)",
+      "  -v, --verbose     Print way too much information"
     ],
   Output = case proplists:get_value(error, Options) of
     undefined -> Message;

@@ -33,6 +33,8 @@ parse_args(["--verbose" | Args], Options) -> restart_logging(), parse_args(Args,
 parse_args([Unrecognized | Args], Options) ->
   parse_args(Args, [{error, "Unrecognized: " ++ Unrecognized} | Options]).
 
+merge(Configs) ->
+  lists:foldr(fun merge/2, [], Configs).
 merge([], Out) -> Out;
 merge([{Key, Value} | In], Out) ->
   case proplists:get_value(Key, Out) of
@@ -76,11 +78,26 @@ restart_logging() ->
       register(error_logger, ErrorLogger)
   end.
 
+load_config() ->
+  case file:path_consult([".", "/etc/spdy_proxy", "/usr/local/etc/spdy_proxy"], "spdy_proxy.config") of
+    {ok, Config, File} ->
+      error_logger:info_msg("Loaded config from ~s", [File]),
+      Config;
+    {error, enoent} ->
+      [];
+    Err ->
+      io:format("Error reading spdy_proxy.config: ~p~n", [Err]),
+      halt(1)
+  end.
+
+
 main(Args) ->
   io:format("spdy_proxy - simple, scalable SPDY -> HTTP proxy\n"),
 
   stop_logging(),
   PassedOptions = parse_args(Args, []),
+  Options = merge([?DEFAULTS, load_config(), PassedOptions]),
+  io:format("Using config : ~p~n", [Options]),
 
   ok = application:set_env(sasl, sasl_error_logger, false),
   ok = application:set_env(sasl, errlog_type, error),
@@ -91,7 +108,6 @@ main(Args) ->
   application:start(inets),
   application:start(espdy),
 
-  Options = merge(?DEFAULTS, PassedOptions),
   Action = case proplists:get_value(error, Options) of
     undefined -> proplists:get_value(action, Options);
     _ -> fun help/1

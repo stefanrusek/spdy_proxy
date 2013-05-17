@@ -1,5 +1,8 @@
-spdy_proxy - A simple, scalable SPDY -> HTTP proxy
-==================================================
+spdy_proxy
+==========
+
+A simple, scalable SPDY -> HTTP proxy
+-------------------------------------
 
 spdy_proxy is a lightweight SPDY server. Its primary purpose is to sit
 betwen HAProxy (1.5 and later) and any web server. HAProxy provides
@@ -40,17 +43,17 @@ following changes to your haproxy.cfg file.
 1. Add a spdy backend, with an entry for each over your servers:
 
     backend spdy_back
-            balance roundrobin
-            mode tcp
-            server spdy1 server1:9999 weight 1 maxconn 25000 check
+        balance roundrobin
+        mode tcp
+        server spdy1 server1:9999 weight 1 maxconn 25000 check
 
 2. Add "npn http/1.1,http1.0,spdy/3,spdy/2" to the end of your ssl
 directive.
 
 3. Add the following to your https frontend:
 
-            use_backend spdy_back if { ssl_fc_npn -i spdy/3 }
-            use_backend spdy_back if { ssl_fc_npn -i spdy/2 }
+    use_backend spdy_back if { ssl_fc_npn -i spdy/3 }
+    use_backend spdy_back if { ssl_fc_npn -i spdy/2 }
 
 Without HAProxy
 ---------------

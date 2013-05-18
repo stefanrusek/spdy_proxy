@@ -44,10 +44,11 @@ init(_Id, Headers, SpdyOpts) ->
   ProxyServer = proplists:get_value(server, SpdyOpts),
   case gen_tcp:connect(ProxyServer, ProxyPort, [{mode, list}, {active, once}, {packet, line}]) of
     {ok, Sock} ->
+      SpdyHeaderValue = list_to_binary(io_lib:format("SPDY/~b", [SpdyVersion])),
       NewHeaders = [
           {<<"host">>, Host},
           {<<"connection">>, <<"close">>},
-          {<<"x-spdy">>, list_to_binary(io_lib:format("SPDY/~b", [SpdyVersion]))}
+          {<<"x-spdy">>, SpdyHeaderValue}
           | proplists:delete(<<"accept-encoding">>, proplists:delete(<<"host">>, Headers))],
       FirstPacket = io_lib:format("~s ~s ~s~n~s~n", [Method, Path, HttpVersion, format_http_headers(NewHeaders)]),
       case gen_tcp:send(Sock, FirstPacket) of
@@ -91,9 +92,10 @@ handle_info({tcp, Sock, Line}, State) when is_list(Line) ->
   Headers = case proplists:get_value(response_headers, State) of
     [] -> 
       SpdyVersion = proplists:get_value(spdy_version, State),
+      SpdyHeaderValue = list_to_binary(io_lib:format("SPDY/~b", [SpdyVersion])),
       case Line of
-        "HTTP/1.1 " ++ Status1 -> [status(SpdyVersion, strip_crlf(Status1)), version(SpdyVersion, <<"HTTP/1.1">>)];
-        "HTTP/1.0 " ++ Status2 -> [status(SpdyVersion, strip_crlf(Status2)), version(SpdyVersion, <<"HTTP/1.0">>)]
+        "HTTP/1.1 " ++ Status1 -> [status(SpdyVersion, strip_crlf(Status1)), version(SpdyVersion, <<"HTTP/1.1">>), {<<"x-spdy-response">>, SpdyHeaderValue}];
+        "HTTP/1.0 " ++ Status2 -> [status(SpdyVersion, strip_crlf(Status2)), version(SpdyVersion, <<"HTTP/1.0">>), {<<"x-spdy-response">>, SpdyHeaderValue}]
       end;
     PL ->
       case Line of

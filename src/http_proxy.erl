@@ -48,7 +48,8 @@ init(_Id, Headers, SpdyOpts) ->
       NewHeaders = [
           {<<"host">>, Host},
           {<<"connection">>, <<"close">>},
-          {<<"x-spdy">>, SpdyHeaderValue}
+          {<<"x-spdy">>, SpdyHeaderValue},
+          {<<"accept-encoding">>, <<"gzip, deflate">>}
           | proplists:delete(<<"accept-encoding">>, proplists:delete(<<"host">>, Headers))],
       FirstPacket = io_lib:format("~s ~s ~s~n~s~n", [Method, Path, HttpVersion, format_http_headers(NewHeaders)]),
       case gen_tcp:send(Sock, FirstPacket) of

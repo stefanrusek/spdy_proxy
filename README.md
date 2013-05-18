@@ -21,11 +21,21 @@ spdy_proxy proxies at the SPDY channel level, so each SPDY stream is
 proxied to a separate HTTP request. This means that spdy_proxy gives
 you multi-stream abilities out of the box.
 
-For the additional stream features of SPDY, we hope to add X-SPDY-*
+For the additional stream features of SPDY, we are adding X-SPDY-*
 response headers that you can use to tell spdy_proxy to perform
 different operations. For example, you could use X-SPDY-MAX-STREAMS
 to tell spdy_proxy to tell the client the maximum number of active
 streams that it is allowed to create.
+
+Response Headers
+----------------
+
+The host server can send response headers to control spdy_proxy behavior.
+
+* **X-SPDY-MAX-STREAMS** send an integer value and this will be passed to
+the client as a SPDY settings frame indicating the maximum number of active
+streams the client is allowed to create. By default, there is not limit, and
+the SPDY spec recommends you not set this to a value less than 100.
 
 Installation
 ------------

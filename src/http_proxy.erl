@@ -118,11 +118,28 @@ handle_info({tcp_closed, _Sock}, State) ->
 handle_info({tcp_error, _Sock, _Err}, State) ->
   espdy_stream:send_data_fin(self()),
   {noreply, State};
-
   
 handle_info(_M, State) ->
   ?LOG("~p", [_M]),
   {noreply, State}.
+
+process_x_spdy_headers(Headers, State) ->
+  process_x_spdy_headers(Headers, State, []).
+process_x_spdy_headers([], _State, Acc) ->
+  lists:reverse(Acc);
+
+process_x_spdy_headers([{<<"x-spdy-max-streams">>, Value} | Headers], State, Acc) ->
+  case catch binary_to_integer(Value) of
+    N when is_number(N) ->
+      Settings = [#spdy_setting_pair{id=?SETTINGS_MAX_CONCURRENT_STREAMS, flags=?SETTINGS_FLAG_PERSIST_VALUE, value=N} ],
+      F = #spdy_settings{settings=Settings},
+      espdy_stream:send_frame(self(), F);
+    _ -> ignored
+  end,
+  process_x_spdy_headers(Headers, State, Acc);
+
+process_x_spdy_headers([Pair | Headers], State, Acc) -> 
+  process_x_spdy_headers(Headers, State, [Pair | Acc]).
 
 split_header(Line) ->
   split_header(Line, {start, []}).

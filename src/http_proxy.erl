@@ -44,7 +44,11 @@ init(_Id, Headers, SpdyOpts) ->
   ProxyServer = proplists:get_value(server, SpdyOpts),
   case gen_tcp:connect(ProxyServer, ProxyPort, [{mode, list}, {active, once}, {packet, line}]) of
     {ok, Sock} ->
-      NewHeaders = [{<<"host">>, Host}, {<<"connection">>, <<"close">>} | proplists:delete(<<"accept-encoding">>, proplists:delete(<<"host">>, Headers))],
+      NewHeaders = [
+          {<<"host">>, Host},
+          {<<"connection">>, <<"close">>},
+          {<<"x-spdy">>, list_to_binary(io_lib:format("SPDY/~b", [SpdyVersion]))}
+          | proplists:delete(<<"accept-encoding">>, proplists:delete(<<"host">>, Headers))],
       FirstPacket = io_lib:format("~s ~s ~s~n~s~n", [Method, Path, HttpVersion, format_http_headers(NewHeaders)]),
       case gen_tcp:send(Sock, FirstPacket) of
         ok -> {ok, noreply, [{spdy_version, SpdyVersion}, {sock, Sock}, {response_headers, []}]};

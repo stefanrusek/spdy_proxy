@@ -8,8 +8,30 @@ spdy_proxy is a lightweight SPDY server. Its primary purpose is to sit
 betwen HAProxy (1.5 and later) and any web server. HAProxy provides
 SSL and spdy_proxy provides unencrypted SPDY.
 
+FAQ
+---
+
+Q: Wouldn't this just defeat the purpose of SPDY?
+
+A: Actually, no, it doesn't. There are numerous advantages to SPDY, but
+the two big advantages over HTTPS (that is secure HTTP), are multi-
+channel communications, and server->client streams.
+
+spdy_proxy proxies at the SPDY channel level, so each SPDY stream is
+proxied to a separate HTTP request. This means that spdy_proxy gives
+you multi-stream abilities out of the box.
+
+For the additional stream features of SPDY, we hope to add X-SPDY-*
+response headers that you can use to tell spdy_proxy to perform
+different operations. For example, you could use X-SPDY-MAX-STREAMS
+to tell spdy_proxy to tell the client the maximum number of active
+streams that it is allowed to create.
+
 Installation
 ------------
+
+NOTE: Installation is not compelete yet, but this is how it will work
+when it works. ;)
 
 spdy_proxy requires erlang to be installed, additionally git is
 required to build spdy_proxy.

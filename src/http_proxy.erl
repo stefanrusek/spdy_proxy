@@ -83,7 +83,7 @@ handle_data(Data, State) ->
 handle_info({tcp, Sock, "\r\n"}, State) ->
   handle_info({tcp, Sock, ""}, State);
 handle_info({tcp, Sock, ""}, State) ->
-  OutHeaders = proplists:get_value(response_headers, State),
+  OutHeaders = process_x_spdy_headers(proplists:get_value(response_headers, State), State),
   ?LOG("Response Headers ~p~n", [OutHeaders]),
   espdy_stream:send_frame(self(), #spdy_syn_reply{ headers = OutHeaders }),
   inet:setopts(Sock, [{packet, raw}, {active, true}, {mode, binary}]),

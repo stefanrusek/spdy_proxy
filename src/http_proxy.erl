@@ -10,9 +10,6 @@ preprocess_opts(Opts) ->
   [{http_proxy_host_re, re:compile(?HOST_RE)} | Opts].
 
 % header name for spdy version
-scheme(_Version = 2, Headers) -> proplists:get_value(<<"scheme">>, Headers);
-scheme(_Version = 3, Headers) -> proplists:get_value(<<":scheme">>, Headers).
-
 host(_Version = 2, Headers) -> proplists:get_value(<<"host">>, Headers);
 host(_Version = 3, Headers) -> proplists:get_value(<<":host">>, Headers).
 

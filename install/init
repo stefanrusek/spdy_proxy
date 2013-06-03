@@ -14,7 +14,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin
 DESC="SPDY -> HTTP proxy"
 NAME=spdy_proxy
-DAEMON=/opt/spdy_proxy/spdy_proxy
+DAEMON=spdy_proxy
 DAEMON_ARGS=""
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME

@@ -40,9 +40,6 @@ the SPDY spec recommends you not set this to a value less than 100.
 Installation
 ------------
 
-NOTE: Installation is not compelete yet, but this is how it will work
-when it works. ;)
-
 spdy_proxy requires erlang to be installed, additionally git is
 required to build spdy_proxy.
 

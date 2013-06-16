@@ -80,7 +80,7 @@ handle_data(Data, State) ->
 handle_info({tcp, Sock, "\r\n"}, State) ->
   handle_info({tcp, Sock, ""}, State);
 handle_info({tcp, Sock, ""}, State) ->
-  OutHeaders = process_x_spdy_headers(proplists:get_value(response_headers, State), State),
+  OutHeaders = join_duplicates(process_x_spdy_headers(proplists:get_value(response_headers, State), State)),
   ?LOG("Response Headers ~p~n", [OutHeaders]),
   espdy_stream:send_frame(self(), #spdy_syn_reply{ headers = OutHeaders }),
   inet:setopts(Sock, [{packet, raw}, {active, true}, {mode, binary}]),
@@ -143,6 +143,20 @@ split_header(Line) ->
 clean_spaces(Line) ->
   {_, Cleaned} = split_header(Line, {tail, []}),
   Cleaned.
+
+join_duplicates(Headers) ->
+  join_duplicates(Headers, []).
+join_duplicates([], Acc) -> Acc;
+join_duplicates([{K, V} | Tail], Acc) ->
+  case proplists:get_value(K, Acc) of
+    undefined -> join_duplicates(Tail, [{K,V} | Acc]);
+    PrevV ->
+      join_duplicates(Tail,
+        [
+          {K, << PrevV/binary, 0, V/binary >>}
+          | proplists:delete(K, Acc)
+        ])
+  end.
 
 split_header(":" ++ Value, {start, Name}) -> split_header(Value, {tail, list_to_binary(string:to_lower(lists:reverse(Name)))});
 split_header([C | Rest], {start, Name}) -> split_header(Rest, {start, [C | Name]});
